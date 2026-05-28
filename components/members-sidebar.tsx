@@ -1,8 +1,9 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { usePathname } from "next/navigation"
-import { BadgeCheck, Circle, Crown, Users } from "lucide-react"
+import { BadgeCheck, Circle, Crown, Trophy, Users } from "lucide-react"
 
 import { supabase } from "@/lib/supabase"
 import { Badge } from "@/components/ui/badge"
@@ -22,10 +23,18 @@ type MemberPresence = {
   current_page: string | null
 }
 
+type UserPoints = {
+  user_id: string
+  points: number
+  level: number
+}
+
 type MemberView = MemberProfile & {
   online: boolean
   last_seen?: string
   current_page?: string | null
+  points: number
+  level: number
 }
 
 function getInitials(name?: string | null) {
@@ -53,62 +62,79 @@ export function MembersSidebar() {
 
   const [members, setMembers] = useState<MemberProfile[]>([])
   const [presence, setPresence] = useState<MemberPresence[]>([])
+  const [points, setPoints] = useState<UserPoints[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   async function updateMyPresence() {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
 
-  if (userError) {
-    console.error("Erro ao buscar usuário para presença:", userError)
-    return
-  }
-
-  if (!user) {
-    console.warn("Nenhum usuário logado para registrar presença.")
-    return
-  }
-
-  console.log("Registrando presença para:", user.id)
-
-  const { error } = await supabase.from("member_presence").upsert(
-    {
-      user_id: user.id,
-      last_seen: new Date().toISOString(),
-      current_page: pathname,
-      updated_at: new Date().toISOString(),
-    },
-    {
-      onConflict: "user_id",
+    if (userError) {
+      console.error("Erro ao buscar usuário para presença:", userError)
+      return
     }
-  )
 
-  if (error) {
-    console.error("Erro ao atualizar presença:", error)
-    return
+    if (!user) {
+      console.warn("Nenhum usuário logado para registrar presença.")
+      return
+    }
+
+    const { error } = await supabase.from("member_presence").upsert(
+      {
+        user_id: user.id,
+        last_seen: new Date().toISOString(),
+        current_page: pathname,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        onConflict: "user_id",
+      }
+    )
+
+    if (error) {
+      console.error("Erro ao atualizar presença:", error)
+    }
   }
-
-  console.log("Presença atualizada com sucesso.")
-}
 
   async function loadMembers() {
     setIsLoading(true)
 
-    const [{ data: profilesData }, { data: presenceData }] = await Promise.all([
+    const [
+      { data: profilesData, error: profilesError },
+      { data: presenceData, error: presenceError },
+      { data: pointsData, error: pointsError },
+    ] = await Promise.all([
       supabase
         .from("profiles")
         .select("user_id, display_name, username, avatar_url, role")
-        .order("created_at", { ascending: true }),
+        .order("display_name", { ascending: true }),
 
       supabase
         .from("member_presence")
         .select("user_id, last_seen, current_page"),
+
+      supabase
+        .from("user_points")
+        .select("user_id, points, level"),
     ])
+
+    if (profilesError) {
+      console.error("Erro ao carregar perfis:", profilesError)
+    }
+
+    if (presenceError) {
+      console.error("Erro ao carregar presença:", presenceError)
+    }
+
+    if (pointsError) {
+      console.error("Erro ao carregar pontos:", pointsError)
+    }
 
     setMembers((profilesData || []) as MemberProfile[])
     setPresence((presenceData || []) as MemberPresence[])
+    setPoints((pointsData || []) as UserPoints[])
     setIsLoading(false)
   }
 
@@ -130,7 +156,11 @@ export function MembersSidebar() {
     return members
       .map((member) => {
         const memberPresence = presence.find(
-          (item) => item.user_id === member.user_id
+          (item) => String(item.user_id) === String(member.user_id)
+        )
+
+        const memberPoints = points.find(
+          (item) => String(item.user_id) === String(member.user_id)
         )
 
         return {
@@ -138,6 +168,8 @@ export function MembersSidebar() {
           online: isRecentlyOnline(memberPresence?.last_seen),
           last_seen: memberPresence?.last_seen,
           current_page: memberPresence?.current_page,
+          points: memberPoints?.points || 0,
+          level: memberPoints?.level || 1,
         }
       })
       .sort((a, b) => {
@@ -148,10 +180,17 @@ export function MembersSidebar() {
 
         return (a.display_name || "").localeCompare(b.display_name || "")
       })
-  }, [members, presence])
+  }, [members, presence, points])
 
   const onlineMembers = memberList.filter((member) => member.online)
   const totalMembers = memberList.length
+
+  const rankingMembers = [...memberList]
+    .sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points
+      return (a.display_name || "").localeCompare(b.display_name || "")
+    })
+    .slice(0, 5)
 
   return (
     <aside className="hidden xl:block">
@@ -201,6 +240,25 @@ export function MembersSidebar() {
                 <MemberRow key={member.user_id} member={member} compact />
               ))}
             </div>
+
+            <div className="space-y-2 border-t border-white/10 pt-4">
+              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-zinc-500">
+                <Trophy className="h-3.5 w-3.5 text-red-500" />
+                Ranking
+              </p>
+
+              {rankingMembers.length === 0 ? (
+                <p className="text-sm text-zinc-500">Sem pontos ainda.</p>
+              ) : (
+                rankingMembers.map((member, index) => (
+                  <RankingRow
+                    key={`ranking-${member.user_id}`}
+                    member={member}
+                    position={index + 1}
+                  />
+                ))
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -218,7 +276,11 @@ function MemberRow({
   const name = member.display_name || member.username || "Usuário"
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-2">
+    <Link
+      href={`/dashboard/membros/${member.user_id}`}
+      className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-2 transition-colors hover:border-red-500/30 hover:bg-red-500/5"
+      title={`Abrir perfil de ${name}`}
+    >
       <div className="relative">
         <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-red-500/10 text-xs font-black text-red-400">
           {member.avatar_url ? (
@@ -252,7 +314,14 @@ function MemberRow({
 
         {!compact && (
           <p className="truncate text-xs text-zinc-500">
-            {member.online ? "Online" : "Offline"}
+            {member.online ? "Online" : "Offline"} · {member.points} XP · Lv.{" "}
+            {member.level}
+          </p>
+        )}
+
+        {compact && (
+          <p className="truncate text-xs text-zinc-500">
+            {member.points} XP · Lv. {member.level}
           </p>
         )}
       </div>
@@ -260,10 +329,54 @@ function MemberRow({
       {!compact && (
         <Circle
           className={`h-2.5 w-2.5 ${
-            member.online ? "fill-green-500 text-green-500" : "fill-zinc-600 text-zinc-600"
+            member.online
+              ? "fill-green-500 text-green-500"
+              : "fill-zinc-600 text-zinc-600"
           }`}
         />
       )}
-    </div>
+    </Link>
+  )
+}
+
+function RankingRow({
+  member,
+  position,
+}: {
+  member: MemberView
+  position: number
+}) {
+  const name = member.display_name || member.username || "Usuário"
+
+  return (
+    <Link
+      href={`/dashboard/membros/${member.user_id}`}
+      className="flex items-center justify-between rounded-xl border border-white/10 bg-black/30 p-3 transition-colors hover:border-red-500/30 hover:bg-red-500/5"
+      title={`Abrir perfil de ${name}`}
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-red-500/20 bg-red-500/10 text-xs font-black text-red-400">
+          #{position}
+        </div>
+
+        <div className="min-w-0">
+          <div className="flex items-center gap-1">
+            <p className="truncate text-sm font-bold">{name}</p>
+
+            {member.role === "admin" ? (
+              <Crown className="h-3.5 w-3.5 shrink-0 text-yellow-400" />
+            ) : (
+              <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+            )}
+          </div>
+
+          <p className="text-xs text-zinc-500">Lv. {member.level}</p>
+        </div>
+      </div>
+
+      <p className="shrink-0 text-sm font-black text-red-400">
+        {member.points} XP
+      </p>
+    </Link>
   )
 }

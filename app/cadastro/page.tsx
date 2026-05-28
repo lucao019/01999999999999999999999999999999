@@ -87,12 +87,17 @@ export default function CadastroPage() {
     const user = data.user
 
     if (user) {
+      // Nunca enviar role pelo cliente — o valor padrão é definido pelo banco via RLS/trigger
       await supabase.from("profiles").upsert(
         {
           user_id: user.id,
           display_name: cleanName,
-          username: cleanEmail.split("@")[0],
-          role: "basic",
+          // username sanitizado: apenas letras, números e hífens
+          username: cleanEmail
+            .split("@")[0]
+            .toLowerCase()
+            .replace(/[^a-z0-9-]/g, "-")
+            .slice(0, 30),
           status: "offline",
           bio: "Conta básica criada. Aguardando liberação de acesso.",
           login: cleanEmail,

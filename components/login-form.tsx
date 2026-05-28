@@ -27,12 +27,6 @@ export function LoginForm() {
 
   useEffect(() => {
     async function checkSession() {
-      const savedEmail = window.localStorage.getItem("monstro:last-email")
-
-      if (savedEmail) {
-        setEmail(savedEmail)
-      }
-
       const {
         data: { session },
       } = await supabase.auth.getSession()
@@ -133,8 +127,6 @@ export function LoginForm() {
       setIsLoading(false)
       return
     }
-
-    window.localStorage.setItem("monstro:last-email", cleanEmail)
 
     setIsLoading(false)
     router.push("/timeline")

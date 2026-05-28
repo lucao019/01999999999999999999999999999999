@@ -525,8 +525,12 @@ export default function PerfilPage() {
         {
           user_id: userId,
           display_name: profile.displayName,
-          username: profile.username,
-          role: profile.role,
+          // username sanitizado: apenas letras, números e hífens
+          username: profile.username
+            .toLowerCase()
+            .replace(/[^a-z0-9-]/g, "-")
+            .slice(0, 30),
+          // role NUNCA é enviado pelo cliente — protegido pelo banco via RLS
           status: profile.status,
           bio: profile.bio,
           phone: profile.phone,

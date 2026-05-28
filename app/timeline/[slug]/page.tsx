@@ -137,20 +137,31 @@ export default function TimelinePostPage() {
       return
     }
 
+    // Limite de tamanho para evitar spam/abuso
+    if (cleanText.length > 2000) {
+      setMessage("Comentário muito longo. Máximo de 2000 caracteres.")
+      return
+    }
+
     if (!isVerified) {
       setMessage("Você precisa confirmar seu email antes de comentar.")
+      return
+    }
+
+    if (!currentUserId) {
+      setMessage("Sessão inválida. Faça login novamente.")
       return
     }
 
     setIsSending(true)
     setMessage("")
 
+    // Não enviar status nem author_name pelo cliente — o banco deve resolver via RLS/trigger
     const { error } = await supabase.from("comments").insert({
       post_id: post.id,
       user_id: currentUserId,
-      author_name: currentUserName,
       content: cleanText,
-      status: "visible",
+      // status e author_name são definidos pelo servidor/banco, não pelo cliente
     })
 
     if (error) {

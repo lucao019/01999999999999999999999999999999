@@ -87,12 +87,10 @@ export default function CadastroPage() {
     const user = data.user
 
     if (user) {
-      // Nunca enviar role pelo cliente — o valor padrão é definido pelo banco via RLS/trigger
       await supabase.from("profiles").upsert(
         {
           user_id: user.id,
           display_name: cleanName,
-          // username sanitizado: apenas letras, números e hífens
           username: cleanEmail
             .split("@")[0]
             .toLowerCase()
@@ -129,13 +127,22 @@ export default function CadastroPage() {
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black px-4 py-8 text-white sm:px-6">
-      <div className="absolute inset-0 bg-gradient-to-br from-black via-zinc-950 to-red-950/50" />
+      {/* Fundo animado igual ao login */}
+      <img
+        src="/login-bg.gif"
+        alt="Fundo animado"
+        className="absolute inset-0 h-full w-full object-cover object-center opacity-100"
+      />
+
+      {/* Camadas visuais iguais ao login */}
+      <div className="absolute inset-0 bg-black/5" />
+      <div className="absolute inset-0 bg-gradient-to-br from-black via-zinc-950/90 to-red-950/50" />
       <div className="absolute -right-24 top-24 h-96 w-96 rounded-full bg-red-600/20 blur-3xl" />
       <div className="absolute bottom-0 left-10 h-96 w-96 rounded-full bg-red-900/20 blur-3xl" />
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.045)_1px,transparent_1px)] bg-[size:56px_56px]" />
 
       <section className="relative z-10 w-full max-w-md animate-in fade-in slide-in-from-bottom-2 duration-300">
-        <div className="flex min-h-[640px] flex-col justify-center overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/80 p-5 shadow-2xl backdrop-blur-xl sm:p-8">
+        <div className="flex min-h-[620px] flex-col justify-center overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/80 p-5 shadow-2xl backdrop-blur-xl sm:min-h-[680px] sm:p-8">
           <div className="mb-8 space-y-3 text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl border border-red-500/40 bg-red-600/20 shadow-lg shadow-red-900/40">
               <UserPlus className="h-7 w-7 text-red-500" />

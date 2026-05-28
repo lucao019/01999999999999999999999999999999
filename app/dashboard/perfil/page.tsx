@@ -48,6 +48,8 @@ type ProfileData = {
   login: string
 }
 
+type CropTarget = "avatar" | "banner"
+
 const defaultProfile: ProfileData = {
   displayName: "Usuário",
   username: "usuario",
@@ -103,6 +105,7 @@ export default function PerfilPage() {
   const [isUploading, setIsUploading] = useState(false)
 
   const [cropModalOpen, setCropModalOpen] = useState(false)
+  const [cropTarget, setCropTarget] = useState<CropTarget>("avatar")
   const [cropImageUrl, setCropImageUrl] = useState("")
   const [cropFile, setCropFile] = useState<File | null>(null)
   const [cropZoom, setCropZoom] = useState(1)
@@ -250,9 +253,10 @@ export default function PerfilPage() {
     updateProfile(field, publicUrl)
   }
 
-  function openAvatarCrop(file: File) {
+  function openImageCrop(file: File, target: CropTarget) {
     const objectUrl = URL.createObjectURL(file)
 
+    setCropTarget(target)
     setCropFile(file)
     setCropImageUrl(objectUrl)
     setCropZoom(1)
@@ -317,7 +321,7 @@ export default function PerfilPage() {
     setIsDraggingCrop(false)
   }
 
-  async function createCroppedAvatarBlob(): Promise<Blob> {
+  async function createCroppedImageBlob(target: CropTarget): Promise<Blob> {
     return new Promise((resolve, reject) => {
       if (!cropFile || !cropImageUrl) {
         reject(new Error("Nenhuma imagem selecionada."))
@@ -329,8 +333,14 @@ export default function PerfilPage() {
 
       image.onload = () => {
         const canvas = document.createElement("canvas")
-        canvas.width = 800
-        canvas.height = 800
+
+        if (target === "avatar") {
+          canvas.width = 800
+          canvas.height = 800
+        } else {
+          canvas.width = 1600
+          canvas.height = 533
+        }
 
         const context = canvas.getContext("2d")
 
@@ -343,6 +353,7 @@ export default function PerfilPage() {
         context.fillRect(0, 0, canvas.width, canvas.height)
 
         const imageRatio = image.width / image.height
+        const canvasRatio = canvas.width / canvas.height
 
         let drawWidth = canvas.width * cropZoom
         let drawHeight = drawWidth / imageRatio
@@ -350,6 +361,16 @@ export default function PerfilPage() {
         if (drawHeight < canvas.height * cropZoom) {
           drawHeight = canvas.height * cropZoom
           drawWidth = drawHeight * imageRatio
+        }
+
+        if (drawWidth < canvas.width || drawHeight < canvas.height) {
+          if (imageRatio > canvasRatio) {
+            drawHeight = canvas.height * cropZoom
+            drawWidth = drawHeight * imageRatio
+          } else {
+            drawWidth = canvas.width * cropZoom
+            drawHeight = drawWidth / imageRatio
+          }
         }
 
         const drawX = (canvas.width - drawWidth) / 2 + cropX * 2
@@ -401,81 +422,11 @@ export default function PerfilPage() {
       return
     }
 
-    if (field === "avatar") {
-      openAvatarCrop(file)
-      event.target.value = ""
-      return
-    }
-
-    setIsUploading(true)
-    setSavedMessage("")
-    setMessageType("info")
-
-    const extensionByType: Record<string, string> = {
-      "image/jpeg": "jpg",
-      "image/png": "png",
-      "image/webp": "webp",
-      "image/gif": "gif",
-    }
-
-    const extension = extensionByType[file.type] || "jpg"
-
-    const cleanId =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : String(Date.now())
-
-    const filePath = `${userId}/banner-${cleanId}.${extension}`
-
-    try {
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("profile-images")
-        .upload(filePath, file, {
-          cacheControl: "3600",
-          contentType: file.type,
-          upsert: true,
-        })
-
-      if (uploadError) {
-        setIsUploading(false)
-        setMessageType("error")
-        setSavedMessage(`Erro ao enviar banner: ${uploadError.message}`)
-        event.target.value = ""
-        return
-      }
-
-      const uploadedPath = uploadData?.path || filePath
-
-      const { data } = supabase.storage
-        .from("profile-images")
-        .getPublicUrl(uploadedPath)
-
-      if (!data.publicUrl) {
-        setIsUploading(false)
-        setMessageType("error")
-        setSavedMessage("Banner enviado, mas não foi possível gerar URL pública.")
-        event.target.value = ""
-        return
-      }
-
-      await saveImageUrlToProfile("banner", data.publicUrl)
-
-      setIsUploading(false)
-      setMessageType("success")
-      setSavedMessage("Banner atualizado e salvo no perfil.")
-
-      event.target.value = ""
-    } catch (error) {
-      setIsUploading(false)
-      setMessageType("error")
-      setSavedMessage(
-        `Erro ao salvar banner: ${getSupabaseErrorMessage(error)}`
-      )
-      event.target.value = ""
-    }
+    openImageCrop(file, field)
+    event.target.value = ""
   }
 
-  async function handleConfirmAvatarCrop() {
+  async function handleConfirmCrop() {
     if (!cropFile) return
 
     if (!userId) {
@@ -489,14 +440,17 @@ export default function PerfilPage() {
     setMessageType("info")
 
     try {
-      const croppedBlob = await createCroppedAvatarBlob()
+      const croppedBlob = await createCroppedImageBlob(cropTarget)
 
       const cleanId =
         typeof crypto !== "undefined" && "randomUUID" in crypto
           ? crypto.randomUUID()
           : String(Date.now())
 
-      const filePath = `${userId}/avatar-${cleanId}.jpg`
+      const filePath =
+        cropTarget === "avatar"
+          ? `${userId}/avatar-${cleanId}.jpg`
+          : `${userId}/banner-${cleanId}.jpg`
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("profile-images")
@@ -509,7 +463,11 @@ export default function PerfilPage() {
       if (uploadError) {
         setIsUploading(false)
         setMessageType("error")
-        setSavedMessage(`Erro ao enviar foto: ${uploadError.message}`)
+        setSavedMessage(
+          cropTarget === "avatar"
+            ? `Erro ao enviar foto: ${uploadError.message}`
+            : `Erro ao enviar banner: ${uploadError.message}`
+        )
         return
       }
 
@@ -522,21 +480,33 @@ export default function PerfilPage() {
       if (!data.publicUrl) {
         setIsUploading(false)
         setMessageType("error")
-        setSavedMessage("Foto enviada, mas não foi possível gerar URL pública.")
+        setSavedMessage(
+          cropTarget === "avatar"
+            ? "Foto enviada, mas não foi possível gerar URL pública."
+            : "Banner enviado, mas não foi possível gerar URL pública."
+        )
         return
       }
 
-      await saveImageUrlToProfile("avatar", data.publicUrl)
+      await saveImageUrlToProfile(cropTarget, data.publicUrl)
 
       setIsUploading(false)
       setMessageType("success")
-      setSavedMessage("Foto de perfil atualizada e salva.")
+      setSavedMessage(
+        cropTarget === "avatar"
+          ? "Foto de perfil atualizada e salva."
+          : "Banner recortado, atualizado e salvo."
+      )
 
       closeCropModal()
     } catch (error) {
       setIsUploading(false)
       setMessageType("error")
-      setSavedMessage(`Erro ao salvar foto: ${getSupabaseErrorMessage(error)}`)
+      setSavedMessage(
+        cropTarget === "avatar"
+          ? `Erro ao salvar foto: ${getSupabaseErrorMessage(error)}`
+          : `Erro ao salvar banner: ${getSupabaseErrorMessage(error)}`
+      )
     }
   }
 
@@ -615,6 +585,14 @@ export default function PerfilPage() {
       : messageType === "success"
         ? "border-green-500/20 bg-green-500/10 text-green-400"
         : "border-white/10 bg-black/30 text-zinc-400"
+
+  const cropTitle =
+    cropTarget === "avatar" ? "Ajustar foto de perfil" : "Ajustar foto de capa"
+
+  const cropDescription =
+    cropTarget === "avatar"
+      ? "Arraste a imagem e ajuste o zoom antes de salvar."
+      : "Arraste a imagem e ajuste o zoom para enquadrar a capa."
 
   return (
     <AppShell>
@@ -967,7 +945,11 @@ export default function PerfilPage() {
 
       {cropModalOpen && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
-          <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-zinc-950 p-5 text-white shadow-2xl">
+          <div
+            className={`relative w-full rounded-2xl border border-white/10 bg-zinc-950 p-5 text-white shadow-2xl ${
+              cropTarget === "avatar" ? "max-w-md" : "max-w-3xl"
+            }`}
+          >
             <button
               type="button"
               onClick={closeCropModal}
@@ -978,14 +960,16 @@ export default function PerfilPage() {
             </button>
 
             <div className="mb-4 pr-10">
-              <h2 className="text-xl font-black">Ajustar foto de perfil</h2>
-              <p className="mt-1 text-sm text-zinc-400">
-                Arraste a imagem e ajuste o zoom antes de salvar.
-              </p>
+              <h2 className="text-xl font-black">{cropTitle}</h2>
+              <p className="mt-1 text-sm text-zinc-400">{cropDescription}</p>
             </div>
 
             <div
-              className="relative mx-auto h-72 w-72 cursor-grab touch-none overflow-hidden rounded-full border-4 border-red-500/40 bg-black active:cursor-grabbing"
+              className={`relative mx-auto cursor-grab touch-none overflow-hidden border-4 border-red-500/40 bg-black active:cursor-grabbing ${
+                cropTarget === "avatar"
+                  ? "h-72 w-72 rounded-full"
+                  : "h-64 w-full max-w-2xl rounded-2xl"
+              }`}
               onMouseDown={handleCropMouseDown}
               onMouseMove={handleCropMouseMove}
               onMouseUp={handleCropMouseUp}
@@ -996,7 +980,11 @@ export default function PerfilPage() {
             >
               <img
                 src={cropImageUrl}
-                alt="Recorte do avatar"
+                alt={
+                  cropTarget === "avatar"
+                    ? "Recorte do avatar"
+                    : "Recorte do banner"
+                }
                 draggable={false}
                 className="absolute left-1/2 top-1/2 max-w-none select-none"
                 style={{
@@ -1005,7 +993,11 @@ export default function PerfilPage() {
                 }}
               />
 
-              <div className="pointer-events-none absolute inset-0 rounded-full ring-2 ring-white/30" />
+              <div
+                className={`pointer-events-none absolute inset-0 ring-2 ring-white/30 ${
+                  cropTarget === "avatar" ? "rounded-full" : "rounded-2xl"
+                }`}
+              />
             </div>
 
             <div className="mt-5 space-y-2">
@@ -1038,11 +1030,15 @@ export default function PerfilPage() {
 
               <Button
                 type="button"
-                onClick={handleConfirmAvatarCrop}
+                onClick={handleConfirmCrop}
                 disabled={isUploading}
                 className="flex-1 bg-red-600 hover:bg-red-700"
               >
-                {isUploading ? "Enviando..." : "Salvar recorte"}
+                {isUploading
+                  ? "Enviando..."
+                  : cropTarget === "avatar"
+                    ? "Salvar foto"
+                    : "Salvar capa"}
               </Button>
             </div>
           </div>

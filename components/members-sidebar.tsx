@@ -57,6 +57,14 @@ function isRecentlyOnline(lastSeen?: string) {
   return now - lastSeenTime <= 5 * 60 * 1000
 }
 
+function RoleIcon({ role }: { role: string | null }) {
+  if (role === "admin") {
+    return <Crown className="h-3.5 w-3.5 shrink-0 text-yellow-400" />
+  }
+
+  return <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-sky-400" />
+}
+
 export function MembersSidebar() {
   const pathname = usePathname()
 
@@ -115,9 +123,7 @@ export function MembersSidebar() {
         .from("member_presence")
         .select("user_id, last_seen, current_page"),
 
-      supabase
-        .from("user_points")
-        .select("user_id, points, level"),
+      supabase.from("user_points").select("user_id, points, level"),
     ])
 
     if (profilesError) {
@@ -304,12 +310,7 @@ function MemberRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1">
           <p className="truncate text-sm font-bold">{name}</p>
-
-          {member.role === "admin" ? (
-            <Crown className="h-3.5 w-3.5 text-yellow-400" />
-          ) : (
-            <BadgeCheck className="h-3.5 w-3.5 text-zinc-500" />
-          )}
+          <RoleIcon role={member.role} />
         </div>
 
         {!compact && (
@@ -362,12 +363,7 @@ function RankingRow({
         <div className="min-w-0">
           <div className="flex items-center gap-1">
             <p className="truncate text-sm font-bold">{name}</p>
-
-            {member.role === "admin" ? (
-              <Crown className="h-3.5 w-3.5 shrink-0 text-yellow-400" />
-            ) : (
-              <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
-            )}
+            <RoleIcon role={member.role} />
           </div>
 
           <p className="text-xs text-zinc-500">Lv. {member.level}</p>

@@ -279,14 +279,13 @@ function pickContent(messages) {
     .filter((message) => message.role === "user")
     .map((message) => message.text)
 
-  const bestAssistant = assistantMessages.sort((a, b) => b.length - a.length)[0]
-  const bestUser = userMessages.sort((a, b) => b.length - a.length)[0]
+  const bestAssistant = [...assistantMessages].sort(
+    (a, b) => b.length - a.length
+  )[0]
 
-  const content = bestAssistant || bestUser || "Conteúdo importado da conversa."
+  const bestUser = [...userMessages].sort((a, b) => b.length - a.length)[0]
 
-  return content.length > 4500
-    ? `${content.slice(0, 4500)}\n\n[conteúdo cortado para caber na página]`
-    : content
+  return bestAssistant || bestUser || "Conteúdo importado da conversa."
 }
 
 function extractProblem(messages) {

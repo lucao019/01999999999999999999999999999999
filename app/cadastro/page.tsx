@@ -135,7 +135,7 @@ export default function CadastroPage() {
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.045)_1px,transparent_1px)] bg-[size:56px_56px]" />
 
       <section className="relative z-10 w-full max-w-md animate-in fade-in slide-in-from-bottom-2 duration-300">
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/80 p-5 shadow-2xl backdrop-blur-xl sm:p-8">
+        <div className="flex min-h-[640px] flex-col justify-center overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/80 p-5 shadow-2xl backdrop-blur-xl sm:p-8">
           <div className="mb-8 space-y-3 text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl border border-red-500/40 bg-red-600/20 shadow-lg shadow-red-900/40">
               <UserPlus className="h-7 w-7 text-red-500" />

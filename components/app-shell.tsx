@@ -1,5 +1,6 @@
 "use client"
 
+import { MembersSidebar } from "@/components/members-sidebar"
 import Link from "next/link"
 import { ReactNode } from "react"
 import { useRouter } from "next/navigation"
@@ -92,27 +93,33 @@ export function AppShell({ children, title, description }: AppShellProps) {
         </div>
       </header>
 
-      <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-        {(title || description) && (
-          <div className="mb-6 rounded-2xl border border-white/10 bg-zinc-950/70 p-5 shadow-2xl">
-            {title && (
-              <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
-                {title}
-              </h1>
-            )}
+      <section className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 sm:py-8">
+  <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="min-w-0">
+      {(title || description) && (
+        <div className="mb-6 rounded-2xl border border-white/10 bg-zinc-950/70 p-5 shadow-2xl">
+          {title && (
+            <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
+              {title}
+            </h1>
+          )}
 
-            {description && (
-              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
-                {description}
-              </p>
-            )}
-          </div>
-        )}
-
-        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-          {children}
+          {description && (
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
+              {description}
+            </p>
+          )}
         </div>
-      </section>
+      )}
+
+      <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+        {children}
+      </div>
+    </div>
+
+    <MembersSidebar />
+  </div>
+</section>
     </main>
   )
 }

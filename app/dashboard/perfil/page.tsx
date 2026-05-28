@@ -52,7 +52,7 @@ const defaultProfile: ProfileData = {
   displayName: "Usuário",
   username: "usuario",
   role: "basic",
-  status: "online",
+  status: "disponivel",
   bio: "Transformando conversas, estudos, projetos e ideias em um sistema próprio.",
   phone: "",
   city: "",
@@ -64,16 +64,16 @@ const defaultProfile: ProfileData = {
 }
 
 const statusLabels: Record<string, string> = {
-  online: "Online",
+  disponivel: "Disponível",
   focado: "Focado",
   trabalhando: "Trabalhando",
   offline: "Offline",
 }
 
 const statusStyles: Record<string, string> = {
-  online: "bg-green-500/20 text-green-400 border-green-500/30",
+  disponivel: "bg-green-500/20 text-green-400 border-green-500/30",
   focado: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  trabalhando: "bg-red-500/20 text-red-400 border-red-500/30",
+  trabalhando: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
   offline: "bg-zinc-500/20 text-zinc-300 border-zinc-500/30",
 }
 
@@ -219,6 +219,37 @@ export default function PerfilPage() {
     return ""
   }
 
+  async function saveImageUrlToProfile(
+    field: "avatar" | "banner",
+    publicUrl: string
+  ) {
+    if (!userId) {
+      throw new Error("Usuário não carregado.")
+    }
+
+    const updatePayload =
+      field === "avatar"
+        ? {
+            avatar_url: publicUrl,
+            updated_at: new Date().toISOString(),
+          }
+        : {
+            banner_url: publicUrl,
+            updated_at: new Date().toISOString(),
+          }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update(updatePayload)
+      .eq("user_id", userId)
+
+    if (error) {
+      throw error
+    }
+
+    updateProfile(field, publicUrl)
+  }
+
   function openAvatarCrop(file: File) {
     const objectUrl = URL.createObjectURL(file)
 
@@ -293,7 +324,7 @@ export default function PerfilPage() {
         return
       }
 
-      const image = new Image()
+      const image = new window.Image()
       image.src = cropImageUrl
 
       image.onload = () => {
@@ -394,7 +425,7 @@ export default function PerfilPage() {
         ? crypto.randomUUID()
         : String(Date.now())
 
-    const filePath = `${userId}/${field}-${cleanId}.${extension}`
+    const filePath = `${userId}/banner-${cleanId}.${extension}`
 
     try {
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -408,7 +439,7 @@ export default function PerfilPage() {
       if (uploadError) {
         setIsUploading(false)
         setMessageType("error")
-        setSavedMessage(`Erro ao enviar imagem: ${uploadError.message}`)
+        setSavedMessage(`Erro ao enviar banner: ${uploadError.message}`)
         event.target.value = ""
         return
       }
@@ -422,23 +453,23 @@ export default function PerfilPage() {
       if (!data.publicUrl) {
         setIsUploading(false)
         setMessageType("error")
-        setSavedMessage("Imagem enviada, mas não foi possível gerar URL pública.")
+        setSavedMessage("Banner enviado, mas não foi possível gerar URL pública.")
         event.target.value = ""
         return
       }
 
-      updateProfile(field, data.publicUrl)
+      await saveImageUrlToProfile("banner", data.publicUrl)
 
       setIsUploading(false)
       setMessageType("success")
-      setSavedMessage("Banner enviado. Clique em Salvar perfil.")
+      setSavedMessage("Banner atualizado e salvo no perfil.")
 
       event.target.value = ""
     } catch (error) {
       setIsUploading(false)
       setMessageType("error")
       setSavedMessage(
-        `Erro de conexão ao enviar imagem: ${getSupabaseErrorMessage(error)}`
+        `Erro ao salvar banner: ${getSupabaseErrorMessage(error)}`
       )
       event.target.value = ""
     }
@@ -478,7 +509,7 @@ export default function PerfilPage() {
       if (uploadError) {
         setIsUploading(false)
         setMessageType("error")
-        setSavedMessage(`Erro ao enviar imagem: ${uploadError.message}`)
+        setSavedMessage(`Erro ao enviar foto: ${uploadError.message}`)
         return
       }
 
@@ -491,21 +522,21 @@ export default function PerfilPage() {
       if (!data.publicUrl) {
         setIsUploading(false)
         setMessageType("error")
-        setSavedMessage("Imagem enviada, mas não foi possível gerar URL pública.")
+        setSavedMessage("Foto enviada, mas não foi possível gerar URL pública.")
         return
       }
 
-      updateProfile("avatar", data.publicUrl)
+      await saveImageUrlToProfile("avatar", data.publicUrl)
 
       setIsUploading(false)
       setMessageType("success")
-      setSavedMessage("Foto recortada. Clique em Salvar perfil.")
+      setSavedMessage("Foto de perfil atualizada e salva.")
 
       closeCropModal()
     } catch (error) {
       setIsUploading(false)
       setMessageType("error")
-      setSavedMessage(`Erro ao recortar imagem: ${getSupabaseErrorMessage(error)}`)
+      setSavedMessage(`Erro ao salvar foto: ${getSupabaseErrorMessage(error)}`)
     }
   }
 
@@ -521,16 +552,16 @@ export default function PerfilPage() {
     setMessageType("info")
 
     try {
-      const { error } = await supabase.from("profiles").upsert(
-        {
-          user_id: userId,
+      const safeUsername = profile.username
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, "-")
+        .slice(0, 30)
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({
           display_name: profile.displayName,
-          // username sanitizado: apenas letras, números e hífens
-          username: profile.username
-            .toLowerCase()
-            .replace(/[^a-z0-9-]/g, "-")
-            .slice(0, 30),
-          // role NUNCA é enviado pelo cliente — protegido pelo banco via RLS
+          username: safeUsername,
           status: profile.status,
           bio: profile.bio,
           phone: profile.phone,
@@ -541,11 +572,8 @@ export default function PerfilPage() {
           banner_url: profile.banner,
           login: profile.login,
           updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "user_id",
-        }
-      )
+        })
+        .eq("user_id", userId)
 
       setIsSaving(false)
 
@@ -554,6 +582,11 @@ export default function PerfilPage() {
         setSavedMessage(`Erro ao salvar: ${getSupabaseErrorMessage(error)}`)
         return
       }
+
+      setProfile((current) => ({
+        ...current,
+        username: safeUsername,
+      }))
 
       setMessageType("success")
       setSavedMessage("Perfil salvo na nuvem.")
@@ -770,7 +803,7 @@ export default function PerfilPage() {
                         <SelectValue placeholder="Selecione o status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="online">Online</SelectItem>
+                        <SelectItem value="disponivel">Disponível</SelectItem>
                         <SelectItem value="focado">Focado</SelectItem>
                         <SelectItem value="trabalhando">Trabalhando</SelectItem>
                         <SelectItem value="offline">Offline</SelectItem>

@@ -5,8 +5,8 @@ import { ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import {
   CodeXml,
-  FolderOpen,
   LayoutDashboard,
+  Library,
   LogOut,
   Newspaper,
   User,
@@ -57,10 +57,10 @@ export function AppShell({ children, title, description }: AppShellProps) {
               </Button>
             </Link>
 
-            <Link href="/dashboard/projetos">
+            <Link href="/dashboard/biblioteca">
               <Button variant="ghost" size="sm" className="gap-2">
-                <FolderOpen className="h-4 w-4" />
-                <span className="hidden md:inline">Projetos</span>
+                <Library className="h-4 w-4" />
+                <span className="hidden md:inline">Biblioteca</span>
               </Button>
             </Link>
 

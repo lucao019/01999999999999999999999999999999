@@ -109,6 +109,50 @@ export default function TimelinePage() {
     )
   }, [posts, activities])
 
+  async function handleDeletePost(post: Post) {
+    const confirmed = window.confirm(
+      `Excluir a publicação "${post.title}" da timeline?`
+    )
+
+    if (!confirmed) return
+
+    const { error } = await supabase
+      .from("posts")
+      .update({
+        status: "deleted",
+      })
+      .eq("id", post.id)
+
+    if (error) {
+      setMessage(`Erro ao excluir publicação: ${error.message}`)
+      return
+    }
+
+    setPosts((current) => current.filter((item) => item.id !== post.id))
+  }
+
+  async function handleDeleteActivity(activity: ActivityEvent) {
+    const confirmed = window.confirm(
+      `Excluir esta atualização da timeline?\n\n"${activity.title}"`
+    )
+
+    if (!confirmed) return
+
+    const { error } = await supabase
+      .from("activity_events")
+      .delete()
+      .eq("id", activity.id)
+
+    if (error) {
+      setMessage(`Erro ao excluir atualização: ${error.message}`)
+      return
+    }
+
+    setActivities((current) =>
+      current.filter((item) => item.id !== activity.id)
+    )
+  }
+
   if (isLoading) {
     return (
       <AppShell>
@@ -204,9 +248,16 @@ export default function TimelinePage() {
                 <ActivityCard
                   key={`activity-${item.activity.id}`}
                   activity={item.activity}
+                  canDelete={role === "admin"}
+                  onDelete={handleDeleteActivity}
                 />
               ) : (
-                <PostCard key={`post-${item.post.id}`} post={item.post} />
+                <PostCard
+                  key={`post-${item.post.id}`}
+                  post={item.post}
+                  canDelete={role === "admin"}
+                  onDelete={handleDeletePost}
+                />
               )
             )}
           </section>

@@ -10,6 +10,7 @@ import {
   Shield,
   Target,
   User,
+  Activity,
 } from "lucide-react"
 
 import { AppShell } from "@/components/app-shell"
@@ -32,10 +33,22 @@ type Post = {
   created_at: string
 }
 
+type ActivityEvent = {
+  id: string
+  user_id: string
+  event_type: string
+  title: string
+  description: string | null
+  image_url: string | null
+  link_url: string | null
+  created_at: string
+}
+
 export default function TimelinePage() {
   const [displayName, setDisplayName] = useState("Usuário")
   const [role, setRole] = useState("basic")
   const [posts, setPosts] = useState<Post[]>([])
+  const [activities, setActivities] = useState<ActivityEvent[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [message, setMessage] = useState("")
 
@@ -62,19 +75,35 @@ export default function TimelinePage() {
       setDisplayName(profile?.display_name || user.email || "Usuário")
       setRole(profile?.role || "basic")
 
-      const { data: postsData, error } = await supabase
-        .from("posts")
-        .select("*")
-        .eq("status", "published")
-        .order("published_at", { ascending: false })
+      const [
+        { data: postsData, error: postsError },
+        { data: activitiesData, error: activitiesError },
+      ] = await Promise.all([
+        supabase
+          .from("posts")
+          .select("*")
+          .eq("status", "published")
+          .order("published_at", { ascending: false }),
 
-      if (error) {
-        setMessage(`Erro ao carregar publicações: ${error.message}`)
+        supabase
+          .from("activity_events")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(12),
+      ])
+
+      if (postsError) {
+        setMessage(`Erro ao carregar publicações: ${postsError.message}`)
         setIsLoading(false)
         return
       }
 
+      if (activitiesError) {
+        console.error("Erro ao carregar atividades:", activitiesError)
+      }
+
       setPosts(postsData || [])
+      setActivities((activitiesData || []) as ActivityEvent[])
       setIsLoading(false)
     }
 
@@ -116,8 +145,8 @@ export default function TimelinePage() {
                 </h1>
 
                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-400">
-                  Timeline pública de posts, ideias, estudos e publicações da
-                  plataforma.
+                  Timeline pública de posts, ideias, estudos e atualizações dos
+                  membros.
                 </p>
               </div>
             </div>
@@ -130,10 +159,10 @@ export default function TimelinePage() {
                 </Button>
               </Link>
 
-              <Link href="/dashboard/projetos">
+              <Link href="/dashboard/biblioteca">
                 <Button variant="outline" className="gap-2">
                   <Target className="h-4 w-4" />
-                  Ver projetos
+                  Biblioteca
                 </Button>
               </Link>
 
@@ -163,6 +192,69 @@ export default function TimelinePage() {
             {message}
           </div>
         )}
+
+        <Card className="border-white/10 bg-zinc-950/80 text-white shadow-2xl">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-red-500" />
+              Atividades da Comunidade
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className="space-y-3">
+            {activities.length === 0 ? (
+              <p className="text-sm text-zinc-400">
+                Nenhuma atualização pública ainda.
+              </p>
+            ) : (
+              activities.map((activity) => {
+                const content = (
+                  <div className="rounded-xl border border-white/10 bg-black/30 p-4 transition-colors hover:border-red-500/40 hover:bg-black/50">
+                    <div className="flex gap-4">
+                      {activity.image_url ? (
+                        <img
+                          src={activity.image_url}
+                          alt={activity.title}
+                          className="h-16 w-16 shrink-0 rounded-xl object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-500">
+                          <Activity className="h-7 w-7" />
+                        </div>
+                      )}
+
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-bold text-white">
+                          {activity.title}
+                        </h3>
+
+                        {activity.description && (
+                          <p className="mt-1 line-clamp-2 text-sm text-zinc-400">
+                            {activity.description}
+                          </p>
+                        )}
+
+                        <p className="mt-2 text-xs text-zinc-500">
+                          {new Date(activity.created_at).toLocaleString(
+                            "pt-BR"
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )
+
+                return activity.link_url ? (
+                  <Link key={activity.id} href={activity.link_url}>
+                    {content}
+                  </Link>
+                ) : (
+                  <div key={activity.id}>{content}</div>
+                )
+              })
+            )}
+          </CardContent>
+        </Card>
 
         {posts.length === 0 && (
           <Card className="border-white/10 bg-zinc-950/80 text-white">

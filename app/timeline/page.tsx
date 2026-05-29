@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   ArrowRight,
   Calendar,
@@ -10,7 +10,7 @@ import {
   Shield,
   Target,
   User,
-  Activity,
+  Users,
 } from "lucide-react"
 
 import { AppShell } from "@/components/app-shell"
@@ -18,7 +18,16 @@ import { supabase } from "@/lib/supabase"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
+
+type ActivityEvent = {
+  id: string
+  title: string
+  description: string | null
+  image_url: string | null
+  link_url: string | null
+  created_at: string
+}
 
 type Post = {
   id: string
@@ -33,16 +42,17 @@ type Post = {
   created_at: string
 }
 
-type ActivityEvent = {
-  id: string
-  user_id: string
-  event_type: string
-  title: string
-  description: string | null
-  image_url: string | null
-  link_url: string | null
-  created_at: string
-}
+type FeedItem =
+  | {
+      type: "post"
+      date: string
+      post: Post
+    }
+  | {
+      type: "activity"
+      date: string
+      activity: ActivityEvent
+    }
 
 export default function TimelinePage() {
   const [displayName, setDisplayName] = useState("Usuário")
@@ -87,9 +97,9 @@ export default function TimelinePage() {
 
         supabase
           .from("activity_events")
-          .select("*")
+          .select("id, title, description, image_url, link_url, created_at")
           .order("created_at", { ascending: false })
-          .limit(12),
+          .limit(50),
       ])
 
       if (postsError) {
@@ -109,6 +119,24 @@ export default function TimelinePage() {
 
     loadFeed()
   }, [])
+
+  const feedItems = useMemo<FeedItem[]>(() => {
+    const postItems: FeedItem[] = posts.map((post) => ({
+      type: "post",
+      date: post.published_at || post.created_at,
+      post,
+    }))
+
+    const activityItems: FeedItem[] = activities.map((activity) => ({
+      type: "activity",
+      date: activity.created_at,
+      activity,
+    }))
+
+    return [...postItems, ...activityItems].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    )
+  }, [posts, activities])
 
   if (isLoading) {
     return (
@@ -145,8 +173,7 @@ export default function TimelinePage() {
                 </h1>
 
                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-400">
-                  Timeline pública de posts, ideias, estudos e atualizações dos
-                  membros.
+                  Timeline pública com posts e atualizações dos membros.
                 </p>
               </div>
             </div>
@@ -193,100 +220,85 @@ export default function TimelinePage() {
           </div>
         )}
 
-        <Card className="border-white/10 bg-zinc-950/80 text-white shadow-2xl">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-red-500" />
-              Atividades da Comunidade
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent className="space-y-3">
-            {activities.length === 0 ? (
-              <p className="text-sm text-zinc-400">
-                Nenhuma atualização pública ainda.
-              </p>
-            ) : (
-              activities.map((activity) => {
-                const content = (
-                  <div className="rounded-xl border border-white/10 bg-black/30 p-4 transition-colors hover:border-red-500/40 hover:bg-black/50">
-                    <div className="flex gap-4">
-                      {activity.image_url ? (
-                        <img
-                          src={activity.image_url}
-                          alt={activity.title}
-                          className="h-16 w-16 shrink-0 rounded-xl object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-500">
-                          <Activity className="h-7 w-7" />
-                        </div>
-                      )}
-
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-bold text-white">
-                          {activity.title}
-                        </h3>
-
-                        {activity.description && (
-                          <p className="mt-1 line-clamp-2 text-sm text-zinc-400">
-                            {activity.description}
-                          </p>
-                        )}
-
-                        <p className="mt-2 text-xs text-zinc-500">
-                          {new Date(activity.created_at).toLocaleString(
-                            "pt-BR"
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )
-
-                return activity.link_url ? (
-                  <Link key={activity.id} href={activity.link_url}>
-                    {content}
-                  </Link>
-                ) : (
-                  <div key={activity.id}>{content}</div>
-                )
-              })
-            )}
-          </CardContent>
-        </Card>
-
-        {posts.length === 0 && (
+        {feedItems.length === 0 && (
           <Card className="border-white/10 bg-zinc-950/80 text-white">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Newspaper className="h-5 w-5 text-red-500" />
-                Nenhuma publicação ainda
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="space-y-4">
-              <p className="text-sm text-zinc-400">
-                Quando o admin publicar posts, eles vão aparecer aqui no feed.
-              </p>
-
-              {role === "admin" && (
-                <Link href="/dashboard/posts/novo">
-                  <Button className="gap-2 bg-red-600 hover:bg-red-700">
-                    Criar primeiro post
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-              )}
+            <CardContent className="p-6 text-sm text-zinc-400">
+              Nenhuma atualização ainda.
             </CardContent>
           </Card>
         )}
 
-        {posts.length > 0 && (
-          <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {posts.map((post) => (
+        <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {feedItems.map((item) => {
+            if (item.type === "activity") {
+              const activity = item.activity
+             const activityCard = (
+  <>
+    <div className="aspect-[16/10] overflow-hidden bg-black/40">
+      {activity.image_url ? (
+        <img
+          src={activity.image_url}
+          alt={activity.title}
+          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-red-500">
+          <Users className="h-10 w-10" />
+        </div>
+      )}
+    </div>
+
+    <CardContent className="space-y-4 p-5">
+      <div className="flex flex-wrap gap-2">
+        <Badge className="border-blue-500/30 bg-blue-500/20 text-blue-400">
+          comunidade
+        </Badge>
+
+        <Badge variant="outline" className="gap-1 text-zinc-300">
+          <Calendar className="h-3 w-3" />
+          {new Date(activity.created_at).toLocaleDateString("pt-BR")}
+        </Badge>
+      </div>
+
+      <div>
+        <h2 className="line-clamp-2 text-xl font-black transition-colors group-hover:text-red-400">
+          {activity.title}
+        </h2>
+
+        <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-zinc-400">
+          {activity.description || "Atualização pública."}
+        </p>
+      </div>
+
+      <Button className="w-full gap-2 bg-red-600 hover:bg-red-700">
+        Ver atualização
+        <ArrowRight className="h-4 w-4" />
+      </Button>
+    </CardContent>
+  </>
+)
+
+return (
+  <Card
+    key={`activity-${activity.id}`}
+    className="group overflow-hidden border-white/10 bg-zinc-950/80 text-white shadow-2xl transition-colors hover:border-red-500/40"
+  >
+    {activity.link_url ? (
+      <Link href={activity.link_url} className="block">
+        {activityCard}
+      </Link>
+    ) : (
+      <div className="block">{activityCard}</div>
+    )}
+  </Card>
+)
+            }
+
+            const post = item.post
+
+            return (
               <Card
-                key={post.id}
+                key={`post-${post.id}`}
                 className="group overflow-hidden border-white/10 bg-zinc-950/80 text-white shadow-2xl transition-colors hover:border-red-500/40"
               >
                 <Link href={`/timeline/${post.slug}`} className="block">
@@ -339,9 +351,9 @@ export default function TimelinePage() {
                   </Link>
                 </CardContent>
               </Card>
-            ))}
-          </section>
-        )}
+            )
+          })}
+        </section>
       </div>
     </AppShell>
   )

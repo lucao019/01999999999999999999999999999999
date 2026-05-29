@@ -88,23 +88,24 @@ export default function CadastroPage() {
 
     if (user) {
       await supabase.from("profiles").upsert(
-        {
-          user_id: user.id,
-          display_name: cleanName,
-          username: cleanEmail
-            .split("@")[0]
-            .toLowerCase()
-            .replace(/[^a-z0-9-]/g, "-")
-            .slice(0, 30),
-          status: "offline",
-          bio: "Conta básica criada. Aguardando liberação de acesso.",
-          login: cleanEmail,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "user_id",
-        }
-      )
+  {
+    user_id: user.id,
+    display_name: cleanName,
+    username: cleanEmail
+      .split("@")[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "-")
+      .slice(0, 30),
+    role: "member",
+    status: "offline",
+    bio: "Membro verificado no sistema.",
+    login: cleanEmail,
+    updated_at: new Date().toISOString(),
+  },
+  {
+    onConflict: "user_id",
+  }
+)
     }
 
     await supabase.auth.signOut()

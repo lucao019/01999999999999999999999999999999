@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight, Calendar, Users } from "lucide-react"
+import { ArrowRight, Calendar, Trash2, Users } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card"
 
 export type ActivityEvent = {
   id: string
+  user_id: string
   title: string
   description: string | null
   image_url: string | null
@@ -16,7 +17,23 @@ export type ActivityEvent = {
   created_at: string
 }
 
-export function ActivityCard({ activity }: { activity: ActivityEvent }) {
+type ActivityCardProps = {
+  activity: ActivityEvent
+  canDelete?: boolean
+  onDelete?: (activity: ActivityEvent) => void
+}
+
+export function ActivityCard({
+  activity,
+  canDelete = false,
+  onDelete,
+}: ActivityCardProps) {
+  function handleDelete(event: React.MouseEvent<HTMLButtonElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+    onDelete?.(activity)
+  }
+
   const content = (
     <>
       <div className="aspect-[16/10] overflow-hidden bg-black/40">
@@ -64,7 +81,18 @@ export function ActivityCard({ activity }: { activity: ActivityEvent }) {
   )
 
   return (
-    <Card className="group overflow-hidden border-white/10 bg-zinc-950/80 text-white shadow-2xl transition-colors hover:border-red-500/40">
+    <Card className="group relative overflow-hidden border-white/10 bg-zinc-950/80 text-white shadow-2xl transition-colors hover:border-red-500/40">
+      {canDelete && (
+        <button
+          type="button"
+          onClick={handleDelete}
+          className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-lg border border-red-500/30 bg-black/70 text-red-400 backdrop-blur transition-colors hover:bg-red-500/20 hover:text-red-300"
+          title="Excluir atualização"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      )}
+
       {activity.link_url ? (
         <Link href={activity.link_url} className="block">
           {content}

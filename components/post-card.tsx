@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight, Calendar, FileText } from "lucide-react"
+import { ArrowRight, Calendar, FileText, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card"
 
 export type Post = {
   id: string
+  user_id: string | null
   title: string
   slug: string
   excerpt: string | null
@@ -20,9 +21,26 @@ export type Post = {
   created_at: string
 }
 
-export function PostCard({ post }: { post: Post }) {
+type PostCardProps = {
+  post: Post
+  canDelete?: boolean
+  onDelete?: (post: Post) => void
+}
+
+export function PostCard({ post, canDelete = false, onDelete }: PostCardProps) {
   return (
-    <Card className="group overflow-hidden border-white/10 bg-zinc-950/80 text-white shadow-2xl transition-colors hover:border-red-500/40">
+    <Card className="group relative overflow-hidden border-white/10 bg-zinc-950/80 text-white shadow-2xl transition-colors hover:border-red-500/40">
+      {canDelete && (
+        <button
+          type="button"
+          onClick={() => onDelete?.(post)}
+          className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-lg border border-red-500/30 bg-black/70 text-red-400 backdrop-blur transition-colors hover:bg-red-500/20 hover:text-red-300"
+          title="Excluir publicação"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      )}
+
       <Link href={`/timeline/${post.slug}`} className="block">
         <div className="aspect-[16/10] overflow-hidden bg-zinc-900">
           {post.cover_url ? (

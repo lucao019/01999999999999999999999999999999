@@ -26,6 +26,7 @@ type FeedItem =
     }
 
 export default function TimelinePage() {
+  const [currentUserId, setCurrentUserId] = useState("")
   const [displayName, setDisplayName] = useState("Usuário")
   const [role, setRole] = useState("basic")
   const [posts, setPosts] = useState<Post[]>([])
@@ -47,6 +48,8 @@ export default function TimelinePage() {
         return
       }
 
+      setCurrentUserId(user.id)
+
       const { data: profile } = await supabase
         .from("profiles")
         .select("display_name, role")
@@ -62,13 +65,15 @@ export default function TimelinePage() {
       ] = await Promise.all([
         supabase
           .from("posts")
-          .select("*")
+          .select(
+            "id, user_id, title, slug, excerpt, content, cover_url, category, status, published_at, created_at"
+          )
           .eq("status", "published")
           .order("published_at", { ascending: false }),
 
         supabase
           .from("activity_events")
-          .select("id, title, description, image_url, link_url, created_at")
+          .select("id, user_id, title, description, image_url, link_url, created_at")
           .order("created_at", { ascending: false })
           .limit(50),
       ])
@@ -108,6 +113,12 @@ export default function TimelinePage() {
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     )
   }, [posts, activities])
+
+  function canDeleteOwnerContent(userId?: string | null) {
+    if (role === "admin") return true
+
+    return String(userId || "") === String(currentUserId || "")
+  }
 
   async function handleDeletePost(post: Post) {
     const confirmed = window.confirm(
@@ -178,7 +189,7 @@ export default function TimelinePage() {
                 </Badge>
 
                 <Badge variant="outline" className="text-zinc-300">
-                  {role === "admin" ? "Admin" : "Conta básica"}
+                  {role === "admin" ? "Admin" : "Membro"}
                 </Badge>
               </div>
 
@@ -248,14 +259,14 @@ export default function TimelinePage() {
                 <ActivityCard
                   key={`activity-${item.activity.id}`}
                   activity={item.activity}
-                  canDelete={role === "admin"}
+                  canDelete={canDeleteOwnerContent(item.activity.user_id)}
                   onDelete={handleDeleteActivity}
                 />
               ) : (
                 <PostCard
                   key={`post-${item.post.id}`}
                   post={item.post}
-                  canDelete={role === "admin"}
+                  canDelete={canDeleteOwnerContent(item.post.user_id)}
                   onDelete={handleDeletePost}
                 />
               )

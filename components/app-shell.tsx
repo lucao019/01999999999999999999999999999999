@@ -4,14 +4,7 @@ import { MembersSidebar } from "@/components/members-sidebar"
 import Link from "next/link"
 import { ReactNode } from "react"
 import { useRouter } from "next/navigation"
-import {
-  CodeXml,
-  LayoutDashboard,
-  Library,
-  LogOut,
-  Newspaper,
-  User,
-} from "lucide-react"
+import { CodeXml, Library, LogOut, Newspaper, User } from "lucide-react"
 
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -32,10 +25,20 @@ export function AppShell({ children, title, description }: AppShellProps) {
   }
 
   return (
-    <main className="min-h-screen bg-black text-white">
-      <div className="fixed inset-0 -z-10 bg-gradient-to-br from-black via-zinc-950 to-red-950/30" />
-      <div className="fixed -right-24 top-24 -z-10 h-96 w-96 rounded-full bg-red-600/15 blur-3xl" />
-      <div className="fixed bottom-0 left-10 -z-10 h-96 w-96 rounded-full bg-red-900/15 blur-3xl" />
+    <main className="relative min-h-screen overflow-hidden bg-black text-white">
+      {/* Background global do app logado */}
+      <div className="fixed inset-0 z-0">
+        <img
+          src="/backgrounds/berserk-skeleton.gif"
+          alt="Background animado"
+          className="h-full w-full object-cover object-center opacity-35"
+        />
+
+        <div className="absolute inset-0 bg-black/70" />
+        <div className="absolute inset-0 bg-gradient-to-br from-black via-zinc-950/80 to-red-950/40" />
+        <div className="absolute -right-24 top-24 h-96 w-96 rounded-full bg-red-600/15 blur-3xl" />
+        <div className="absolute bottom-0 left-10 h-96 w-96 rounded-full bg-red-900/15 blur-3xl" />
+      </div>
 
       <header className="sticky top-0 z-50 border-b border-white/10 bg-black/70 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
@@ -72,13 +75,6 @@ export function AppShell({ children, title, description }: AppShellProps) {
               </Button>
             </Link>
 
-            <Link href="/dashboard">
-              <Button variant="outline" size="sm" className="gap-2">
-                <LayoutDashboard className="h-4 w-4" />
-                <span className="hidden md:inline">Painel</span>
-              </Button>
-            </Link>
-
             <Button
               type="button"
               variant="outline"
@@ -93,33 +89,33 @@ export function AppShell({ children, title, description }: AppShellProps) {
         </div>
       </header>
 
-      <section className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 sm:py-8">
-  <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-    <div className="min-w-0">
-      {(title || description) && (
-        <div className="mb-6 rounded-2xl border border-white/10 bg-zinc-950/70 p-5 shadow-2xl">
-          {title && (
-            <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
-              {title}
-            </h1>
-          )}
+      <section className="relative z-10 mx-auto max-w-[1500px] px-4 py-6 sm:px-6 sm:py-8">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0">
+            {(title || description) && (
+              <div className="mb-6 rounded-2xl border border-white/10 bg-zinc-950/70 p-5 shadow-2xl backdrop-blur-sm">
+                {title && (
+                  <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
+                    {title}
+                  </h1>
+                )}
 
-          {description && (
-            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
-              {description}
-            </p>
-          )}
+                {description && (
+                  <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
+                    {description}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+              {children}
+            </div>
+          </div>
+
+          <MembersSidebar />
         </div>
-      )}
-
-      <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-        {children}
-      </div>
-    </div>
-
-    <MembersSidebar />
-  </div>
-</section>
+      </section>
     </main>
   )
 }

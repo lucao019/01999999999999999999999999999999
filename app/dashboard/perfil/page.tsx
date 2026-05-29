@@ -223,35 +223,62 @@ export default function PerfilPage() {
   }
 
   async function saveImageUrlToProfile(
-    field: "avatar" | "banner",
-    publicUrl: string
-  ) {
-    if (!userId) {
-      throw new Error("Usuário não carregado.")
-    }
-
-    const updatePayload =
-      field === "avatar"
-        ? {
-            avatar_url: publicUrl,
-            updated_at: new Date().toISOString(),
-          }
-        : {
-            banner_url: publicUrl,
-            updated_at: new Date().toISOString(),
-          }
-
-    const { error } = await supabase
-      .from("profiles")
-      .update(updatePayload)
-      .eq("user_id", userId)
-
-    if (error) {
-      throw error
-    }
-
-    updateProfile(field, publicUrl)
+  field: "avatar" | "banner",
+  publicUrl: string
+) {
+  if (!userId) {
+    throw new Error("Usuário não carregado.")
   }
+
+  const updatePayload =
+    field === "avatar"
+      ? {
+          avatar_url: publicUrl,
+          updated_at: new Date().toISOString(),
+        }
+      : {
+          banner_url: publicUrl,
+          updated_at: new Date().toISOString(),
+        }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update(updatePayload)
+    .eq("user_id", userId)
+
+  if (error) {
+    throw error
+  }
+
+  updateProfile(field, publicUrl)
+
+  const memberName =
+    profile.displayName || profile.username || profile.login || "Um membro"
+
+  const { error: activityError } = await supabase
+    .from("activity_events")
+    .insert({
+      user_id: userId,
+      event_type:
+        field === "avatar"
+          ? "profile_avatar_updated"
+          : "profile_banner_updated",
+      title:
+        field === "avatar"
+          ? `${memberName} trocou a foto de perfil`
+          : `${memberName} atualizou a foto de capa`,
+      description:
+        field === "avatar"
+          ? "Nova foto de perfil publicada."
+          : "Nova capa de perfil publicada.",
+      image_url: publicUrl,
+      link_url: `/dashboard/membros/${userId}`,
+    })
+
+  if (activityError) {
+    console.error("Erro ao registrar atividade:", activityError)
+  }
+}
 
   function openImageCrop(file: File, target: CropTarget) {
     const objectUrl = URL.createObjectURL(file)

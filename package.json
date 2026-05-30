@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:open": "powershell -NoProfile -Command \"Start-Process chrome.exe 'http://0199999999.local:3000'\" && next dev",
-    "open": "powershell -NoProfile -Command \"Start-Process chrome.exe 'http://0199999999.local:3000'\"",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint ."
-  },
+  "dev": "next dev",
+  "dev:open": "powershell -NoProfile -Command \"Start-Process 'http://localhost:3000'\"; next dev",
+  "open": "powershell -NoProfile -Command \"Start-Process 'http://localhost:3000'\"",
+  "build": "next build",
+  "start": "next start",
+  "lint": "eslint ."
+},
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-accordion": "1.2.12",

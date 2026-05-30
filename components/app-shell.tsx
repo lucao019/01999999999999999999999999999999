@@ -4,7 +4,14 @@ import { MembersSidebar } from "@/components/members-sidebar"
 import Link from "next/link"
 import { ReactNode } from "react"
 import { useRouter } from "next/navigation"
-import { CodeXml, Library, LogOut, Newspaper, User } from "lucide-react"
+import {
+  CodeXml,
+  Library,
+  LogOut,
+  MessageCircle,
+  Newspaper,
+  User,
+} from "lucide-react"
 
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -65,6 +72,13 @@ export function AppShell({ children, title, description }: AppShellProps) {
               <Button variant="ghost" size="sm" className="gap-2">
                 <Library className="h-4 w-4" />
                 <span className="hidden md:inline">Biblioteca</span>
+              </Button>
+            </Link>
+
+            <Link href="/dashboard/chat">
+              <Button variant="ghost" size="sm" className="gap-2">
+                <MessageCircle className="h-4 w-4" />
+                <span className="hidden md:inline">Chat</span>
               </Button>
             </Link>
 

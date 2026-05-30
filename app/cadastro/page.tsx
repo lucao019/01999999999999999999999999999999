@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { Turnstile } from "@marsidev/react-turnstile"
 import { Eye, EyeOff, Loader2, UserPlus } from "lucide-react"
 
 import { supabase } from "@/lib/supabase"
@@ -18,13 +19,15 @@ export default function CadastroPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [acceptTerms, setAcceptTerms] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState("")
   const [messageType, setMessageType] = useState<"success" | "error" | "info">(
     "info"
   )
+
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""
 
   const handleCadastro = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -45,7 +48,14 @@ export default function CadastroPage() {
       return
     }
 
-    if (!acceptTerms) {
+    if (!turnstileSiteKey) {
+      setMessageType("error")
+      setMessage("Turnstile não está configurado no ambiente.")
+      setIsLoading(false)
+      return
+    }
+
+    if (!captchaToken) {
       setMessageType("error")
       setMessage("Confirme que você não é um robô para continuar.")
       setIsLoading(false)
@@ -70,6 +80,7 @@ export default function CadastroPage() {
       email: cleanEmail,
       password: cleanPassword,
       options: {
+        captchaToken,
         data: {
           display_name: cleanName,
         },
@@ -80,6 +91,7 @@ export default function CadastroPage() {
     if (error) {
       setMessageType("error")
       setMessage(error.message)
+      setCaptchaToken("")
       setIsLoading(false)
       return
     }
@@ -88,30 +100,30 @@ export default function CadastroPage() {
 
     if (user) {
       await supabase.from("profiles").upsert(
-  {
-    user_id: user.id,
-    display_name: cleanName,
-    username: cleanEmail
-      .split("@")[0]
-      .toLowerCase()
-      .replace(/[^a-z0-9-]/g, "-")
-      .slice(0, 30),
-    role: "member",
-    status: "offline",
-    bio: "Membro verificado no sistema.",
-    login: cleanEmail,
-    updated_at: new Date().toISOString(),
-  },
-  {
-    onConflict: "user_id",
-  }
-)
+        {
+          user_id: user.id,
+          display_name: cleanName,
+          username: cleanEmail
+            .split("@")[0]
+            .toLowerCase()
+            .replace(/[^a-z0-9-]/g, "-")
+            .slice(0, 30),
+          role: "member",
+          status: "offline",
+          bio: "Membro verificado no sistema.",
+          login: cleanEmail,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "user_id",
+        }
+      )
     }
 
-    await supabase.auth.signOut()
+    await supabase.auth.signOut().catch(() => {})
 
     setMessageType("success")
-    setMessage("Conta criada. Verifique seu email antes de entrar no sistema.")
+    setMessage("Conta criada. Enviamos um link de ativação para seu email.")
     setIsLoading(false)
 
     window.setTimeout(() => {
@@ -128,14 +140,12 @@ export default function CadastroPage() {
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black px-4 py-8 text-white sm:px-6">
-      {/* Fundo animado igual ao login */}
       <img
         src="/login-bg.gif"
         alt="Fundo animado"
         className="absolute inset-0 h-full w-full object-cover object-center opacity-100"
       />
 
-      {/* Camadas visuais iguais ao login */}
       <div className="absolute inset-0 bg-black/5" />
       <div className="absolute inset-0 bg-gradient-to-br from-black via-zinc-950/90 to-red-950/50" />
       <div className="absolute -right-24 top-24 h-96 w-96 rounded-full bg-red-600/20 blur-3xl" />
@@ -159,7 +169,7 @@ export default function CadastroPage() {
               </h1>
 
               <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                Crie sua conta e confirme o email antes de acessar.
+                Crie sua conta. Vamos enviar um link rápido para ativar seu acesso.
               </p>
             </div>
           </div>
@@ -248,20 +258,40 @@ export default function CadastroPage() {
               />
             </div>
 
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-black/30 p-4 text-sm leading-relaxed text-zinc-400 transition-colors hover:border-red-500/30">
-              <input
-                type="checkbox"
-                checked={acceptTerms}
-                onChange={(event) => setAcceptTerms(event.target.checked)}
-                disabled={isLoading}
-                className="mt-1 h-4 w-4 accent-red-600"
-              />
+            <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+              <p className="mb-3 text-sm text-zinc-400">
+                Verificação anti-bot
+              </p>
 
-              <span>
-                Não sou um robô e entendo que preciso confirmar meu email antes
-                de acessar o sistema.
-              </span>
-            </label>
+              {turnstileSiteKey ? (
+                <Turnstile
+                  siteKey={turnstileSiteKey}
+                  options={{
+                    theme: "dark",
+                    size: "normal",
+                  }}
+                  onSuccess={(token) => {
+                    setCaptchaToken(token)
+                  }}
+                  onError={() => {
+                    setCaptchaToken("")
+                    setMessageType("error")
+                    setMessage("Falha na verificação anti-bot.")
+                  }}
+                  onExpire={() => {
+                    setCaptchaToken("")
+                  }}
+                />
+              ) : (
+                <p className="text-sm text-red-400">
+                  NEXT_PUBLIC_TURNSTILE_SITE_KEY não configurada.
+                </p>
+              )}
+
+              <p className="mt-3 text-xs leading-relaxed text-zinc-500">
+                Confirme que você é humano antes de criar a conta.
+              </p>
+            </div>
 
             {message && (
               <div className={`rounded-lg border p-3 text-sm ${messageClass}`}>
@@ -271,8 +301,8 @@ export default function CadastroPage() {
 
             <Button
               type="submit"
-              disabled={isLoading}
-              className="h-12 w-full bg-red-600 text-base font-bold uppercase tracking-wider text-white hover:bg-red-700"
+              disabled={isLoading || !captchaToken}
+              className="h-12 w-full bg-red-600 text-base font-bold uppercase tracking-wider text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isLoading ? (
                 <>

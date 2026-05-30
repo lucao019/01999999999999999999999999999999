@@ -10,8 +10,15 @@ import {
   LogOut,
   MessageCircle,
   Newspaper,
+  Trophy,
   User,
 } from "lucide-react"
+<Link href="/dashboard/leaderboards">
+  <Button variant="ghost" size="sm" className="gap-2">
+    <Trophy className="h-4 w-4" />
+    <span className="hidden md:inline">Ranking</span>
+  </Button>
+</Link>
 
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"

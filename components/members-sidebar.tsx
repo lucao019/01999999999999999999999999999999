@@ -65,6 +65,10 @@ function RoleIcon({ role }: { role: string | null }) {
   return <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-sky-400" />
 }
 
+function getMemberProfileUrl(userId: string) {
+  return `/dashboard/membros/${userId}`
+}
+
 export function MembersSidebar() {
   const pathname = usePathname()
 
@@ -84,10 +88,7 @@ export function MembersSidebar() {
       return
     }
 
-    if (!user) {
-      console.warn("Nenhum usuário logado para registrar presença.")
-      return
-    }
+    if (!user) return
 
     const { error } = await supabase.from("member_presence").upsert(
       {
@@ -247,24 +248,7 @@ export function MembersSidebar() {
               ))}
             </div>
 
-            <div className="space-y-2 border-t border-white/10 pt-4">
-              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-zinc-500">
-                <Trophy className="h-3.5 w-3.5 text-red-500" />
-                Ranking
-              </p>
-
-              {rankingMembers.length === 0 ? (
-                <p className="text-sm text-zinc-500">Sem pontos ainda.</p>
-              ) : (
-                rankingMembers.map((member, index) => (
-                  <RankingRow
-                    key={`ranking-${member.user_id}`}
-                    member={member}
-                    position={index + 1}
-                  />
-                ))
-              )}
-            </div>
+            
           </CardContent>
         </Card>
       </div>
@@ -281,102 +265,62 @@ function MemberRow({
 }) {
   const name = member.display_name || member.username || "Usuário"
 
-return (
-  <Link
-    href={`/dashboard/membros/${member.user_id}`}
-    className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-2 transition-colors hover:border-red-500/30 hover:bg-red-500/5"
-  >
-    <div className="relative">
-      <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-red-500/10 text-xs font-black text-red-400">
-        {member.avatar_url ? (
-          <img
-            src={member.avatar_url}
-            alt={name}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          getInitials(name)
-        )}
+  return (
+    <Link
+      href={getMemberProfileUrl(member.user_id)}
+      className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-2 transition-colors hover:border-red-500/30 hover:bg-red-500/5"
+      title={`Abrir perfil de ${name}`}
+    >
+      <div className="relative shrink-0">
+        <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-red-500/10 text-xs font-black text-red-400">
+          {member.avatar_url ? (
+            <img
+              src={member.avatar_url}
+              alt={name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            getInitials(name)
+          )}
+        </div>
+
+        <span
+          className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-black ${
+            member.online ? "bg-green-500" : "bg-zinc-600"
+          }`}
+        />
       </div>
 
-      <span
-        className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-black ${
-          member.online ? "bg-green-500" : "bg-zinc-600"
-        }`}
-      />
-    </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1">
+          <p className="truncate text-sm font-bold">{name}</p>
+          <RoleIcon role={member.role} />
+        </div>
 
-    <div className="min-w-0 flex-1">
-      <div className="flex items-center gap-1">
-        <p className="truncate text-sm font-bold">{name}</p>
+        {!compact && (
+          <p className="truncate text-xs text-zinc-500">
+            {member.online ? "Online" : "Offline"} · {member.points} XP · Lv.{" "}
+            {member.level}
+          </p>
+        )}
 
-        {member.role === "admin" ? (
-          <Crown className="h-3.5 w-3.5 text-yellow-400" />
-        ) : (
-          <BadgeCheck className="h-3.5 w-3.5 text-zinc-500" />
+        {compact && (
+          <p className="truncate text-xs text-zinc-500">
+            {member.points} XP · Lv. {member.level}
+          </p>
         )}
       </div>
 
       {!compact && (
-        <p className="truncate text-xs text-zinc-500">
-          {member.online ? "Online" : "Offline"} · {member.points} XP · Lv.{" "}
-          {member.level}
-        </p>
+        <Circle
+          className={`h-2.5 w-2.5 shrink-0 ${
+            member.online
+              ? "fill-green-500 text-green-500"
+              : "fill-zinc-600 text-zinc-600"
+          }`}
+        />
       )}
-
-      {compact && (
-        <p className="truncate text-xs text-zinc-500">
-          {member.points} XP · Lv. {member.level}
-        </p>
-      )}
-    </div>
-
-    {!compact && (
-      <Circle
-        className={`h-2.5 w-2.5 ${
-          member.online
-            ? "fill-green-500 text-green-500"
-            : "fill-zinc-600 text-zinc-600"
-        }`}
-      />
-    )}
-  </Link>
-)  
-}
-
-function RankingRow({
-  member,
-  position,
-}: {
-  member: MemberView
-  position: number
-}) {
-  const name = member.display_name || member.username || "Usuário"
-
-  return (
-    <Link
-      href={`/dashboard/membros/${member.user_id}`}
-      className="flex items-center justify-between rounded-xl border border-white/10 bg-black/30 p-3 transition-colors hover:border-red-500/30 hover:bg-red-500/5"
-      title={`Abrir perfil de ${name}`}
-    >
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-red-500/20 bg-red-500/10 text-xs font-black text-red-400">
-          #{position}
-        </div>
-
-        <div className="min-w-0">
-          <div className="flex items-center gap-1">
-            <p className="truncate text-sm font-bold">{name}</p>
-            <RoleIcon role={member.role} />
-          </div>
-
-          <p className="text-xs text-zinc-500">Lv. {member.level}</p>
-        </div>
-      </div>
-
-      <p className="shrink-0 text-sm font-black text-red-400">
-        {member.points} XP
-      </p>
     </Link>
   )
 }
+

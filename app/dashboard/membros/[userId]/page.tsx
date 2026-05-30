@@ -87,16 +87,20 @@ export default function MembroPage() {
   const [presence, setPresence] = useState<MemberPresence | null>(null)
   const [commentCount, setCommentCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState("")
 
   useEffect(() => {
     async function loadMember() {
+      if (!userId) return
+
       setIsLoading(true)
+      setErrorMessage("")
 
       const [
         { data: profileData, error: profileError },
-        { data: pointsData },
-        { data: presenceData },
-        { count },
+        { data: pointsData, error: pointsError },
+        { data: presenceData, error: presenceError },
+        { count, error: commentsError },
       ] = await Promise.all([
         supabase
           .from("profiles")
@@ -126,6 +130,19 @@ export default function MembroPage() {
 
       if (profileError) {
         console.error("Erro ao carregar membro:", profileError)
+        setErrorMessage(`Erro ao carregar membro: ${profileError.message}`)
+      }
+
+      if (pointsError) {
+        console.error("Erro ao carregar pontos:", pointsError)
+      }
+
+      if (presenceError) {
+        console.error("Erro ao carregar presença:", presenceError)
+      }
+
+      if (commentsError) {
+        console.error("Erro ao contar comentários:", commentsError)
       }
 
       setProfile(profileData as PublicProfile | null)
@@ -135,14 +152,8 @@ export default function MembroPage() {
       setIsLoading(false)
     }
 
-    if (userId) {
-      loadMember()
-    }
+    loadMember()
   }, [userId])
-
-  const name = profile?.display_name || profile?.username || "Usuário"
-  const online = isRecentlyOnline(presence?.last_seen)
-  const status = profile?.status || "offline"
 
   if (isLoading) {
     return (
@@ -168,14 +179,26 @@ export default function MembroPage() {
           </Link>
 
           <Card className="border-white/10 bg-zinc-950/80 text-white shadow-2xl">
-            <CardContent className="p-6 text-zinc-400">
-              Membro não encontrado.
+            <CardContent className="space-y-3 p-6">
+              <p className="text-zinc-400">Membro não encontrado.</p>
+
+              {errorMessage && (
+                <p className="text-sm text-red-400">{errorMessage}</p>
+              )}
+
+              <p className="break-all text-xs text-zinc-600">
+                user_id recebido: {userId || "vazio"}
+              </p>
             </CardContent>
           </Card>
         </div>
       </AppShell>
     )
   }
+
+  const name = profile.display_name || profile.username || "Usuário"
+  const online = isRecentlyOnline(presence?.last_seen)
+  const status = profile.status || "offline"
 
   return (
     <AppShell>
@@ -243,7 +266,7 @@ export default function MembroPage() {
                         Admin
                       </Badge>
                     ) : (
-                      <Badge className="gap-1 border-zinc-500/30 bg-zinc-500/10 text-zinc-300">
+                      <Badge className="gap-1 border-blue-500/30 bg-blue-500/10 text-blue-400">
                         <BadgeCheck className="h-3 w-3" />
                         Membro
                       </Badge>
@@ -287,9 +310,11 @@ export default function MembroPage() {
                       XP
                     </p>
                   </div>
+
                   <p className="mt-2 text-2xl font-black">
                     {points?.points || 0}
                   </p>
+
                   <p className="text-xs text-zinc-500">
                     Lv. {points?.level || 1}
                   </p>
@@ -302,6 +327,7 @@ export default function MembroPage() {
                       Coment.
                     </p>
                   </div>
+
                   <p className="mt-2 text-2xl font-black">{commentCount}</p>
                   <p className="text-xs text-zinc-500">interações</p>
                 </div>
@@ -341,8 +367,19 @@ export default function MembroPage() {
                 <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
                   Página atual
                 </p>
+
                 <p className="mt-1 truncate text-zinc-300">
                   {presence?.current_page || "Sem atividade recente"}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                  ID do membro
+                </p>
+
+                <p className="mt-1 break-all font-mono text-xs text-zinc-500">
+                  {profile.user_id}
                 </p>
               </div>
             </CardContent>

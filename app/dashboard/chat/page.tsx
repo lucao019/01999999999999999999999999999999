@@ -18,6 +18,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 
+const GENERAL_ROOM_ID = "00000000-0000-0000-0000-000000000001"
+
 type ChatMessage = {
   id: string
   room_id: string
@@ -68,12 +70,12 @@ export default function ChatPage() {
   async function loadMessages() {
     const { data: messagesData, error: messagesError } = await supabase
       .from("chat_messages")
-.select(
-  "id, room_id, user_id, content, image_url, reply_to, is_deleted, created_at, updated_at"
-)
-.eq("room_id", "00000000-0000-0000-0000-000000000001")
-.order("created_at", { ascending: true })
-.limit(100)
+      .select(
+        "id, room_id, user_id, content, image_url, reply_to, is_deleted, created_at, updated_at"
+      )
+      .eq("room_id", GENERAL_ROOM_ID)
+      .order("created_at", { ascending: true })
+      .limit(100)
 
     if (messagesError) {
       setFeedback(`Erro ao carregar chat: ${messagesError.message}`)
@@ -82,32 +84,34 @@ export default function ChatPage() {
     }
 
     const loadedMessages = (messagesData || []) as ChatMessage[]
-
     setMessages(loadedMessages)
 
     const userIds = Array.from(
       new Set(loadedMessages.map((item) => String(item.user_id)))
     )
 
-    if (userIds.length > 0) {
-      const { data: profilesData, error: profilesError } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, username, avatar_url, role")
-        .in("user_id", userIds)
-
-      if (profilesError) {
-        console.error("Erro ao carregar perfis do chat:", profilesError)
-      }
-
-      const profileMap: Record<string, Profile> = {}
-
-      ;((profilesData || []) as Profile[]).forEach((profile) => {
-        profileMap[String(profile.user_id)] = profile
-      })
-
-      setProfiles(profileMap)
+    if (userIds.length === 0) {
+      setProfiles({})
+      setIsLoading(false)
+      return
     }
 
+    const { data: profilesData, error: profilesError } = await supabase
+      .from("profiles")
+      .select("user_id, display_name, username, avatar_url, role")
+      .in("user_id", userIds)
+
+    if (profilesError) {
+      console.error("Erro ao carregar perfis do chat:", profilesError)
+    }
+
+    const profileMap: Record<string, Profile> = {}
+
+    ;((profilesData || []) as Profile[]).forEach((profile) => {
+      profileMap[String(profile.user_id)] = profile
+    })
+
+    setProfiles(profileMap)
     setIsLoading(false)
   }
 
@@ -140,7 +144,6 @@ export default function ChatPage() {
       }
 
       const role = profile?.role || "basic"
-
       setCurrentRole(role)
 
       if (!["admin", "member"].includes(role)) {
@@ -162,6 +165,7 @@ export default function ChatPage() {
           event: "*",
           schema: "public",
           table: "chat_messages",
+          filter: `room_id=eq.${GENERAL_ROOM_ID}`,
         },
         () => {
           loadMessages()
@@ -187,10 +191,10 @@ export default function ChatPage() {
     setFeedback("")
 
     const { error } = await supabase.from("chat_messages").insert({
-  room_id: "00000000-0000-0000-0000-000000000001",
-  user_id: currentUserId,
-  content: cleanContent,
-})
+      room_id: GENERAL_ROOM_ID,
+      user_id: currentUserId,
+      content: cleanContent,
+    })
 
     setIsSending(false)
 
@@ -200,6 +204,7 @@ export default function ChatPage() {
     }
 
     setContent("")
+    await loadMessages()
   }
 
   async function handleDelete(chatMessage: ChatMessage) {

@@ -71,7 +71,7 @@ export default function ChatPage() {
 .select(
   "id, room_id, user_id, content, image_url, reply_to, is_deleted, created_at, updated_at"
 )
-.eq("room_id", "general")
+.eq("room_id", "00000000-0000-0000-0000-000000000001")
 .order("created_at", { ascending: true })
 .limit(100)
 
@@ -187,7 +187,7 @@ export default function ChatPage() {
     setFeedback("")
 
     const { error } = await supabase.from("chat_messages").insert({
-  room_id: "general",
+  room_id: "00000000-0000-0000-0000-000000000001",
   user_id: currentUserId,
   content: cleanContent,
 })

@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge"
 
 type ChatMessage = {
   id: string
+  room_id: string
   user_id: string
   content: string
   image_url: string | null
@@ -67,11 +68,12 @@ export default function ChatPage() {
   async function loadMessages() {
     const { data: messagesData, error: messagesError } = await supabase
       .from("chat_messages")
-      .select(
-        "id, user_id, content, image_url, reply_to, is_deleted, created_at, updated_at"
-      )
-      .order("created_at", { ascending: true })
-      .limit(100)
+.select(
+  "id, room_id, user_id, content, image_url, reply_to, is_deleted, created_at, updated_at"
+)
+.eq("room_id", "general")
+.order("created_at", { ascending: true })
+.limit(100)
 
     if (messagesError) {
       setFeedback(`Erro ao carregar chat: ${messagesError.message}`)
@@ -185,9 +187,10 @@ export default function ChatPage() {
     setFeedback("")
 
     const { error } = await supabase.from("chat_messages").insert({
-      user_id: currentUserId,
-      content: cleanContent,
-    })
+  room_id: "general",
+  user_id: currentUserId,
+  content: cleanContent,
+})
 
     setIsSending(false)
 

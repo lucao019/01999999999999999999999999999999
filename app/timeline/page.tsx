@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { Newspaper, Shield, Target, User } from "lucide-react"
+import { Newspaper, Shield, User } from "lucide-react"
 
 import { ActivityCard, type ActivityEvent } from "@/components/activity-card"
 import { AppShell } from "@/components/app-shell"
@@ -73,7 +73,9 @@ export default function TimelinePage() {
 
         supabase
           .from("activity_events")
-          .select("id, user_id, title, description, image_url, link_url, created_at")
+          .select(
+            "id, user_id, title, description, image_url, link_url, created_at"
+          )
           .order("created_at", { ascending: false })
           .limit(50),
       ])
@@ -209,13 +211,6 @@ export default function TimelinePage() {
                 <Button className="gap-2 bg-red-600 hover:bg-red-700">
                   <User className="h-4 w-4" />
                   Meu perfil
-                </Button>
-              </Link>
-
-              <Link href="/dashboard/biblioteca">
-                <Button variant="outline" className="gap-2">
-                  <Target className="h-4 w-4" />
-                  Biblioteca
                 </Button>
               </Link>
 

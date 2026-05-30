@@ -166,7 +166,7 @@ export default function DashboardPage() {
                   </Button>
                 </Link>
 
-                <Link href="/dashboard/projetos">
+                <Link href="/dashboard/biblioteca">
                   <Button variant="outline" className="gap-2">
                     <Target className="h-4 w-4" />
                     Ver projetos públicos
@@ -209,23 +209,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Link href="/dashboard/projetos">
-              <Card className="h-full border-white/10 bg-zinc-950/80 text-white shadow-2xl transition-colors hover:border-red-500/40">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Target className="h-5 w-5 text-red-500" />
-                    Projetos
-                  </CardTitle>
-                </CardHeader>
-
-                <CardContent>
-                  <p className="text-sm text-zinc-400">
-                    Acesse os projetos públicos e acompanhe as ideias abertas da
-                    plataforma.
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
+            
           </div>
         </div>
       </AppShell>
@@ -259,12 +243,7 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Link href="/dashboard/projetos">
-                <Button className="gap-2 bg-red-600 hover:bg-red-700">
-                  <Target className="h-4 w-4" />
-                  Abrir Projetos
-                </Button>
-              </Link>
+              
 
               <Link href="/dashboard/biblioteca">
                 <Button variant="outline" className="gap-2">
